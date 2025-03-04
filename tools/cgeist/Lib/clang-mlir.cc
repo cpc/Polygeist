@@ -12,6 +12,7 @@
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/DLTI/DLTI.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/GPU/IR/GPUDialect.h"
 #include "mlir/Target/LLVMIR/Import.h"
 #include "utils.h"
 #include "clang/AST/Attr.h"
@@ -941,7 +942,7 @@ ValueCategory MLIRScanner::VisitVarDecl(clang::VarDecl *decl) {
   auto varLoc = getMLIRLocation(decl->getBeginLoc());
   mlir::Type subType = getMLIRType(decl->getType());
   ValueCategory inite = nullptr;
-  unsigned memtype = decl->hasAttr<CUDASharedAttr>() ? 5 : 0;
+  unsigned memtype = decl->getType().getAddressSpace() == clang::LangAS::opencl_local ? 5 : 0;
   bool LLVMABI = false;
   bool isArray = false;
 
@@ -1871,8 +1872,8 @@ MLIRScanner::EmitGPUCallExpr(clang::CallExpr *expr) {
   if (auto ic = dyn_cast<ImplicitCastExpr>(expr->getCallee())) {
     if (auto sr = dyn_cast<DeclRefExpr>(ic->getSubExpr())) {
       if (sr->getDecl()->getIdentifier() &&
-          sr->getDecl()->getName() == "__syncthreads") {
-        builder.create<mlir::NVVM::Barrier0Op>(loc);
+          sr->getDecl()->getName() == "barrier") {
+        builder.create<mlir::gpu::BarrierOp>(loc);
         return make_pair(ValueCategory(), true);
       }
       if (sr->getDecl()->getIdentifier() && CudaLower &&
@@ -6080,8 +6081,8 @@ static bool parseMLIR(const char *Argv0, std::vector<std::string> filenames,
           StringAttr::get(module->getContext(),
                           Clang->getTarget().getDataLayoutString()));
 
-      module.get()->setAttr(("dlti." + DataLayoutSpecAttr::kAttrKeyword).str(),
-                            translateDataLayout(DL, module->getContext()));
+//      module.get()->setAttr(("dlti." + DataLayoutSpecAttr::kAttrKeyword).str(),
+//                            translateDataLayout(DL, module->getContext()));
 
       // Add target-cpu and target-features attributes to functions. If
       // we have a decl for the function and it has a target attribute then
