@@ -33,7 +33,7 @@ bool isValidSymbolInt(Operation *defOp, bool recur) {
 
   if (recur) {
     if (isa<SelectOp, IndexCastOp, AddIOp, MulIOp, DivSIOp, DivUIOp, RemSIOp,
-            RemUIOp, SubIOp, CmpIOp, TruncIOp, ExtUIOp, ExtSIOp>(defOp))
+            RemUIOp, SubIOp, CmpIOp, TruncIOp, ExtUIOp, ExtSIOp, TruncIOp>(defOp))
       if (llvm::all_of(defOp->getOperands(), [&](Value v) {
             bool b = isValidSymbolInt(v, recur);
             // if (!b)
@@ -303,6 +303,10 @@ AffineApplyNormalizer::AffineApplyNormalizer(AffineMap map,
         continue;
       }
       if (auto idx = decast.getDefiningOp<ExtSIOp>()) {
+        decast = idx.getIn();
+        continue;
+      }
+      if (auto idx = decast.getDefiningOp<TruncIOp>()) {
         decast = idx.getIn();
         continue;
       }
@@ -973,6 +977,9 @@ bool isValidIndex(Value val) {
     return isValidIndex(cast.getOperand());
 
   if (auto cast = val.getDefiningOp<ExtUIOp>())
+    return isValidIndex(cast.getOperand());
+
+  if (auto cast = val.getDefiningOp<TruncIOp>())
     return isValidIndex(cast.getOperand());
 
   if (auto bop = val.getDefiningOp<AddIOp>())
