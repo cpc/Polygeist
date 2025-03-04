@@ -5801,6 +5801,16 @@ mlir::Type MLIRASTConsumer::getMLIRType(clang::QualType qt, bool *implicitRef,
       }
 
     assert(!subRef);
+    if (isa<clang::PointerType>(t)) {
+      const clang::PointerType *PTT2 = cast<clang::PointerType>(t);
+      auto pointeeType = PTT2->getPointeeType();
+
+      if (pointeeType.getAddressSpace() == clang::LangAS::opencl_local) {
+        return mlir::MemRefType::get({outer}, subType,
+                                     MemRefLayoutAttrInterface(),
+                                     mlir::IntegerAttr::get(mlir::IntegerType::get(module->getContext(), 64), 5));
+      }
+    }
     return mlir::MemRefType::get({outer}, subType);
   }
 

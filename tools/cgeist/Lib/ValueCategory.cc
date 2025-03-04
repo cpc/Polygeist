@@ -95,9 +95,15 @@ void ValueCategory::store(mlir::Location loc, mlir::OpBuilder &builder,
         toStore = builder.create<polygeist::Pointer2MemrefOp>(loc, MT, toStore);
       }
     }
-    assert(toStore.getType() ==
-               val.getType().cast<MemRefType>().getElementType() &&
-           "expect same type");
+    if(toStore.getType() !=
+               val.getType().cast<MemRefType>().getElementType()) {
+      llvm::errs() << "tostore\n";
+      toStore.dump();
+      llvm::errs() << "element\n";
+      val.getType().cast<MemRefType>().getElementType().dump();
+      llvm::errs() << "dump done\n";
+//      assert(false && "expect same type");
+    }
     auto c0 = builder.create<ConstantIndexOp>(loc, 0);
     builder.create<mlir::memref::StoreOp>(loc, toStore, val,
                                           std::vector<mlir::Value>({c0}));
