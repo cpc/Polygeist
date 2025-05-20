@@ -546,7 +546,7 @@ mlir::Value MLIRScanner::createAllocOp(mlir::Type t, VarDecl *name,
         builder.create<polygeist::TrivialUseOp>(varLoc, alloc);
         if (memspace != 0) {
           alloc = abuilder.create<polygeist::Pointer2MemrefOp>(
-              varLoc, mlir::MemRefType::get(shape, mt.getElementType()),
+              varLoc, mlir::MemRefType::get(shape, mt.getElementType(), {}, memspace),
               abuilder.create<polygeist::Memref2PointerOp>(
                   varLoc, LLVM::LLVMPointerType::get(mt.getElementType(), 0),
                   alloc));
@@ -562,7 +562,7 @@ mlir::Value MLIRScanner::createAllocOp(mlir::Type t, VarDecl *name,
       alloc = abuilder.create<mlir::memref::AllocaOp>(varLoc, mr);
       if (memspace != 0) {
         alloc = abuilder.create<polygeist::Pointer2MemrefOp>(
-            varLoc, mlir::MemRefType::get(shape, mt.getElementType()),
+            varLoc, mlir::MemRefType::get(shape, mt.getElementType(), {}, memspace),
             abuilder.create<polygeist::Memref2PointerOp>(
                 varLoc, LLVM::LLVMPointerType::get(mt.getElementType(), 0),
                 alloc));
@@ -5189,6 +5189,9 @@ MLIRASTConsumer::GetOrCreateMLIRFunction(const FunctionDecl *FD,
       !FD->hasAttr<CUDAHostAttr>()) {
     function->setAttr("polygeist.device_only_func",
                       StringAttr::get(builder.getContext(), "1"));
+  }
+  if (FD->hasAttr<OpenCLKernelAttr>()) {
+    function->setAttr(mlir::gpu::GPUDialect::getKernelFuncAttrName(), mlir::UnitAttr::get(builder.getContext()));
   }
 
   if (LV == llvm::GlobalValue::InternalLinkage ||
